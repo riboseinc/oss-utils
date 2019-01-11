@@ -33,7 +33,28 @@ TODO: Move these instructions into their respective README files.
 
 [source,console]
 ----
-> create.opensource.gem "${your_gem_name}"
+> create_opensource_gem "${your_gem_name}"
+Installing bundler... 1.16.5
+Creating gem... OK
+Installing .gitignore... OK
+Converting markdown files to asciidoc... OK
+Preprocessing LICENSE.txt... OK
+Preprocessing README.adoc... OK
+Preprocessing CODE_OF_CONDUCT.adoc... OK
+Preprocessing gemspec... OK
+Preprocessing README.adoc... OK
+Preprocessing .travis.yml... OK
+Preprocessing gemspec... OK
+Preprocessing gemspec... OK
+Installing Rubocop... OK
+Installing Hound... OK
+Installing Editorconfig... OK
+Installing binstubs for rake... OK
+Installing binstubs for rspec... OK
+Autofixing Ruby files... OK
+
+🥳  Gem created
+✍️  Remember to update your gem's summary and description in ${your_gem_name}.gemspec
 ----
 
 === Contributing
