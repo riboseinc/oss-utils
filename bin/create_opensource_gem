@@ -1,0 +1,361 @@
+#!/bin/bash
+
+# Ribose Open source Ruby gem creation
+# If it fails midway, fix this script, remove the generated files, and start
+# over.
+show_usage() {
+	local script_name="${0%%*/}"
+	printf "Usage: \e[1m%s\e[m \$gem_name\n" "${script_name}"
+	cat <<EOF
+
+	The following environment variables are also consumed if specified:
+	 - AUTHORS
+	 - EMAIL
+	 - ORGANIZATION
+	 - HOMEPAGE_URI
+	 - SUMMARY
+	 - DESCRIPTION
+EOF
+}
+
+install_bundler() {
+	# Bundler
+	install_info "bundler"
+	gem install bundler >/dev/null
+	local system_bundler_version
+	system_bundler_version="$(bundler --version | awk '{print $3}')"
+	ok "${system_bundler_version}"|| exit 1
+}
+
+create_gem() {
+	# Create gem
+	echo_info "Creating gem"
+	bundle gem --mit "${1?}" >/dev/null
+	ok || exit 1
+}
+
+install_gitignore() {
+	# Gitignore
+	install_info ".gitignore"
+	\curl --silent "https://www.gitignore.io/api/ruby,rails,linux,macos,windows,vim,emacs,textmate,sublimetext,visualstudiocode" > .gitignore && \
+		cat >> .gitignore <<EOF
+
+# Rubocop external references
+.rubocop-http*-yml
+
+# Since this is a Rubygem, ignore lock files.
+Gemfile.lock
+.ruby-version
+.ruby-gemset
+EOF
+	ok || exit 1
+	\git add .gitignore
+	\git commit -m "Initialize repo with .gitignore" >/dev/null 2>&1
+}
+
+convert_md_to_adoc() {
+	# Convert md to asciidoc
+	convert_info "markdown files to asciidoc"
+	local md_file
+	for md_file in *.md
+	do
+		local adoc_file="${md_file%.md}.adoc"
+		\pandoc -s --columns=80 --atx-headers -t asciidoc "${md_file}" -o "${adoc_file}" && \
+			rm "${md_file}"
+	done && \
+	ok || exit 1
+}
+
+preprocess_license() {
+	# Licence
+	local licence_file=LICENSE.txt
+	preprocess_info "${licence_file}"
+	\sed -i "" -Ee 's/(Copyright \(c\) [[:digit:]]{4}[[:space:]]*).*$/\1'"${1?}"'/' "${licence_file}" && \
+	ok || exit 1
+}
+
+preprocess_readme_contacts() {
+	# Readme names
+	local readme_file=README.adoc
+	preprocess_info "${readme_file}"
+	\sed -i "" -Ee 's|https://github.com/\[USERNAME\]/'"${1?}"'|'"${2?}"'|g' "${readme_file}" && \
+	\sed -i "" -Ee 's|https://github.com/%5BUSERNAME%5D/'"${1?}"'|'"${2?}"'|g' "${readme_file}" && \
+	\sed -i "" -Ee 's|\.md|.adoc|g' "${readme_file}" && \
+	ok || exit 1
+}
+
+preprocess_code_of_conduct_contacts() {
+	# Code of conduct
+	local code_of_conduct_file=CODE_OF_CONDUCT.adoc
+	preprocess_info "${code_of_conduct_file}"
+	\sed -i "" -Ee 's/(project team at ).*(.[[:space:]]+All)/\1'"${1?}"'\2/' "${code_of_conduct_file}" && \
+	ok || exit 1
+}
+
+preprocess_gemspec_info() {
+	# Gemspec names
+	preprocess_info "gemspec"
+	local gem_name="${1?}"
+	local authors="${2?}"
+	local homepage_uri="${3?}"
+	local email="${4?}"
+	local summary="${5?}"
+	local description="${6?}"
+	local gemspec="${gem_name}.gemspec"
+	\sed -i "" -Ee 's|(spec.homepage[[:space:]]+=[[:space:]]*).*$|\1"'"${homepage_uri}"'"|' "${gemspec}" && \
+	\sed -i "" -Ee 's/(spec.authors[[:space:]]+=[[:space:]]*).*$/\1["'"${authors}"'"]/' "${gemspec}" && \
+	\sed -i "" -Ee 's/(spec.email[[:space:]]+=[[:space:]]*).*$/\1["'"${email}"'"]/' "${gemspec}" && \
+	\sed -i "" -Ee 's/(spec.summary[[:space:]]+=[[:space:]]*).*$/\1"'"${summary}"'"/' "${gemspec}" && \
+	\sed -i "" -Ee 's/(spec.description[[:space:]]+=[[:space:]]*).*$/\1"'"${description}"'"/' "${gemspec}" && \
+	ok || exit 1
+}
+
+preprocess_readme_badges() {
+	# Readme add badges
+	local gem_name="${1?}"
+	local organization="${2?}"
+	local readme_file=README.adoc
+	preprocess_info "${readme_file}"
+	ruby <<EOS
+	file_name = "${readme_file}"
+	raw_lines = File.read(file_name).split("\n")
+	new_content = <<~EOF
+	ifdef::env-github[]
+	image:https://img.shields.io/gem/v/${gem_name}.svg[
+		Gem Version, link="https://rubygems.org/gems/${gem_name}"]
+	image:https://img.shields.io/travis/${organization}/${gem_name}/master.svg[
+		Build Status, link="https://travis-ci.org/${organization}/${gem_name}/branches"]
+	image:https://img.shields.io/codecov/c/github/${organization}/${gem_name}.svg[
+		Test Coverage, link="https://codecov.io/gh/${organization}/${gem_name}"]
+	// image:https://img.shields.io/codeclimate/coverage/${organization}/${gem_name}.svg[
+	//	Test Coverage, link="https://codeclimate.com/github/${organization}/${gem_name}"]
+	image:https://img.shields.io/codeclimate/maintainability/${organization}/${gem_name}.svg[
+		Code Climate, link="https://codeclimate.com/github/${organization}/${gem_name}"]
+	endif::[]
+	EOF
+
+	# Insert content after the main header
+	raw_lines.insert(2, new_content)
+	File.open(file_name, ?w) { |f| f.puts raw_lines.join("\n") }
+EOS
+	ok || exit 1
+	\git add .
+	\git commit -m "Add badges to README" >/dev/null 2>&1
+}
+
+preprocess_travis_config() {
+	# Travis
+	local travis_file=.travis.yml
+	preprocess_info "${travis_file}"
+	ruby <<EOS
+	file_name = "${travis_file}"
+	raw_yml   = File.read(file_name)
+	require "yaml"
+	config            = YAML.load(raw_yml)
+	config["dist"]   ||= "trusty"
+	config["script"] ||= []
+	config["script"] << "bundle exec rspec"
+	config["rvm"] ||= []
+	config["rvm"]   = config["rvm"].map do |version|
+	  match = version.match(/^(\d+\.\d+).*$/)
+	  match[1] ? match[1] : version
+	end
+	config["rvm"] << "2.3" << "2.4" << "2.5" << "2.6" << "ruby-head" << "jruby" << "jruby-head"
+	config["rvm"].sort!.uniq!
+	new_yml = YAML.dump(config)
+	File.open(file_name, ?w) { |f| f.puts new_yml }
+EOS
+	ok || exit 1
+	\git add -u
+	\git commit -m "ci: Add script, rvm and dist to .travis.yml" >/dev/null 2>&1
+}
+
+preprocess_gemspec_repo() {
+	# Gemspec allow pushing
+	preprocess_info "gemspec"
+	local gemspec="${gem_name}.gemspec"
+	\sed -i "" -Ee '17,29d' "${gemspec}"
+	ok || exit 1
+	\git add -u
+	\git commit -m "gem: Allow pushing to other gem repositories" >/dev/null 2>&1
+}
+
+preprocess_gemspec_bundler_version() {
+	# Gemspec bundler version
+	preprocess_info "gemspec"
+	local gemspec="${gem_name}.gemspec"
+	local gem_bundler_version
+	gem_bundler_version="$(bundler --version | awk '{print $3}')"
+	\sed -i "" -Ee 's|(spec.add_development_dependency "bundler",).*$|\1 "~> '"${gem_bundler_version}"'"|' "${gemspec}" && \
+	ok || exit 1
+	\git add -u
+	\git commit -m "gem: Use latest bundler version" >/dev/null 2>&1
+}
+
+install_rubocop() {
+	# Rubocop
+	install_info "Rubocop"
+	\curl --silent -O https://raw.githubusercontent.com/riboseinc/oss-guides/master/for_new_projects/ruby/.rubocop.yml && \
+	cat >> Gemfile <<EOF
+
+group :test do
+  gem "rubocop", require: false
+end
+EOF
+	ok || exit 1
+}
+
+install_hound() {
+	# Hound
+	install_info "Hound"
+	\curl --silent -O https://raw.githubusercontent.com/riboseinc/oss-guides/master/for_new_projects/ruby/.hound.yml && \
+	ok || exit 1
+}
+
+install_editorconfig() {
+	# Editorconfig
+	install_info "Editorconfig"
+	\curl --silent -O https://raw.githubusercontent.com/riboseinc/oss-guides/master/for_new_projects/ruby/.editorconfig && \
+	ok || exit 1
+}
+
+install_binstubs() {
+	# Install binstubs, etc
+	install_info "binstubs for rake"
+	bundle binstubs rake >/dev/null
+	ok || exit 1
+
+	install_info "binstubs for rspec"
+	bundle binstubs rspec-core >/dev/null
+	ok || exit 1
+	\git add .
+	\git commit -m "Install binstubs for \`rake\` and \`rspec\`
+
+\`\`\`
+bundle binstubs rake
+bundle binstubs rspec-core
+\`\`\`
+" >/dev/null 2>&1
+}
+
+run_rubocop() {
+	# Run Rubocop's autofix
+	echo_info "Autofixing Ruby files"
+	bundle exec rubocop -a >/dev/null || true
+	ok || exit 1
+	\git add .
+	\git commit -m "format: Autofix Ruby files
+
+\`\`\`
+bundle exec rubocop -a
+\`\`\`
+" >/dev/null 2>&1
+}
+
+run_rspec() {
+	# Run rspec
+	bundle exec rspec
+}
+
+remind_user() {
+	# Remind user to update gemspec summary and description
+	echo
+	printf "🥳  Gem created!\n"
+	printf "✍️  Remember to update your gem's s\e[1mummary\e[m and \e[1mdescription\e[m in \e[1m%s.gemspec\e[m\n" "${gem_name}"
+}
+
+check_usage() {
+	if [[ $# != 1 ]]
+	then
+		>&2 echo "Argument error: see usage below."
+		>&2 show_usage
+		exit 1
+	fi
+
+	case "$1" in
+		-h|--help)
+			show_usage
+			;;
+	esac
+}
+
+main() {
+
+	check_usage "$@"
+
+	# Variables for substitution
+	local gem_name="${1?}"
+	local authors="${AUTHORS-"Ribose Inc."}"
+	local email="${EMAIL-"open.source@ribose.com"}"
+	local organization="${ORGANIZATION-"riboseinc"}"
+	local homepage_uri="${HOMEPAGE_URI-"https://github.com/${organization}/${gem_name}"}"
+	local summary="${SUMMARY-"Insert gem summary here"}"
+	local description="${DESCRIPTION-"Insert gem description here"}"
+
+	install_bundler
+	create_gem "${gem_name}"
+
+	cd "${gem_name}" >/dev/null || exit 1
+
+	# Unstage everything
+	\git reset --mixed
+
+	install_gitignore
+	convert_md_to_adoc
+	preprocess_license "${authors}"
+	preprocess_readme_contacts "${gem_name}" "${homepage_uri}"
+	preprocess_code_of_conduct_contacts "${email}"
+	preprocess_gemspec_info "${gem_name}" "${authors}" "${homepage_uri}" "${email}" "${summary}" "${description}"
+	\git add .
+	\git commit -m "Add rest of boilerplate files" >/dev/null 2>&1
+
+	preprocess_readme_badges "${gem_name}" "${organization}"
+	preprocess_travis_config
+	preprocess_gemspec_repo
+	preprocess_gemspec_bundler_version "${gem_name}"
+
+	install_rubocop
+	install_hound
+	install_editorconfig
+	\git add .
+	\git commit -m "Add support for Rubocop, Hound and Editorconfig
+
+See: https://github.com/riboseinc/oss-guides" >/dev/null 2>&1
+
+	install_binstubs
+	run_rubocop
+
+	# run_rspec
+	remind_user
+}
+
+# Supporting functions
+convert_info() {
+	echo_info "$(printf "\e[94mConverting \e[1;34m%s" "$*")"
+}
+
+preprocess_info() {
+	echo_info "$(printf "\e[94mPreprocessing \e[1;34m%s" "$*")"
+}
+
+install_info() {
+	echo_info "$(printf "\e[94mInstalling \e[1;34m%s" "$*")"
+}
+
+echo_info() {
+	printf "\e[94m%s\e[m..." "$*"
+}
+
+ok() {
+	local rv=$?
+	if [[ $rv = 0 ]]
+	then
+		local arg="${1-"OK"}"
+		printf " \e[1;92m%s\e[m\n" "${arg}"
+	else
+		printf " \e[1;91mFailed\e[m\n"
+		exit 1
+	fi
+}
+
+main "$@"
