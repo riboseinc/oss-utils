@@ -1,0 +1,56 @@
+== Ribose OSS Utils
+
+// NOTE: Enable these badges when needed:
+// ifdef::env-github[]
+// image:https://img.shields.io/travis/riboseinc/ribose-oss-utils/master.svg[
+// 	Build Status, link="https://travis-ci.org/riboseinc/ribose-oss-utils/branches"]
+// image:https://img.shields.io/codecov/c/github/riboseinc/ribose-oss-utils.svg[
+// 	Test Coverage, link="https://codecov.io/gh/riboseinc/ribose-oss-utils"]
+// image:https://img.shields.io/codeclimate/coverage/riboseinc/ribose-oss-utils.svg[
+//	Test Coverage, link="https://codeclimate.com/github/riboseinc/ribose-oss-utils"]
+// image:https://img.shields.io/codeclimate/maintainability/riboseinc/ribose-oss-utils.svg[
+// 	Code Climate, link="https://codeclimate.com/github/riboseinc/ribose-oss-utils"]
+// endif::[]
+
+This is a collection of utilities supporting the creation and maintenance of
+Ribose open source projects.
+
+=== Installation
+
+Currently, there is no installation instruction except to copy and paste the
+files to `$PATH` and running `chmod +x` on them.
+
+This is expected to change once there's a clearer understanding of how these
+utilities should be maintained.
+
+TODO: Need a way to organize these files.
+
+=== Usage
+
+TODO: Move these instructions into their respective README files.
+
+==== Creating a new open source Ruby gem
+
+[source,console]
+----
+> create.opensource.gem "${your_gem_name}"
+----
+
+=== Contributing
+
+Bug reports and pull requests are welcome on GitHub at
+https://github.com/riboseinc/ribose-oss-utils. This project is intended to be a
+safe, welcoming space for collaboration, and contributors are expected to adhere
+to the http://contributor-covenant.org[Contributor Covenant] code of conduct.
+
+=== License
+
+The gem is available as open source under the terms of the
+https://opensource.org/licenses/MIT[MIT License].
+
+=== Code of Conduct
+
+Everyone interacting in this project’s codebases, issue trackers,
+chat rooms and mailing lists is expected to follow the
+https://github.com/riboseinc/ribose-oss-utils/blob/master/CODE_OF_CONDUCT.adoc[code
+of conduct].
