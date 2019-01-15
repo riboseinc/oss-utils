@@ -77,10 +77,20 @@ preprocess_license() {
 preprocess_readme_contacts() {
 	# Readme names
 	local readme_file=README.adoc
+	local gem_name="${1?}"
+	local homepage_uri="${2?}"
 	preprocess_info "${readme_file}"
-	\sed -i "" -Ee 's|https://github.com/\[USERNAME\]/'"${1?}"'|'"${2?}"'|g' "${readme_file}" && \
-	\sed -i "" -Ee 's|https://github.com/%5BUSERNAME%5D/'"${1?}"'|'"${2?}"'|g' "${readme_file}" && \
+	\sed -i "" -Ee 's|https://github.com/\[USERNAME\]/'"${gem_name}"'|'"${homepage_uri}"'|g' "${readme_file}" && \
+	\sed -i "" -Ee 's|https://github.com/%5BUSERNAME%5D/'"${gem_name}"'|'"${homepage_uri}"'|g' "${readme_file}" && \
 	\sed -i "" -Ee 's|\.md|.adoc|g' "${readme_file}" && \
+	{
+		if [[ "${homepage_uri}" =~ gitlab ]]
+		then
+			\sed -i "" -Ee 's|GitHub|GitLab|g' "${readme_file}"
+		else
+			true
+		fi
+	} && \
 	ok || exit 1
 }
 
@@ -94,7 +104,7 @@ preprocess_code_of_conduct_contacts() {
 
 preprocess_gemspec_info() {
 	# Gemspec names
-	preprocess_info "gemspec"
+	preprocess_info "gemspec contacts"
 	local gem_name="${1?}"
 	local authors="${2?}"
 	local homepage_uri="${3?}"
@@ -131,6 +141,13 @@ preprocess_readme_badges() {
 	//	Test Coverage, link="https://codeclimate.com/github/${organization}/${gem_name}"]
 	image:https://img.shields.io/codeclimate/maintainability/${organization}/${gem_name}.svg[
 		Code Climate, link="https://codeclimate.com/github/${organization}/${gem_name}"]
+	endif::[]
+
+	ifdef::env-gitlab[]
+	image:https://img.shields.io/gem/v/${gem_name}.svg[
+		Gem Version, link="https://rubygems.org/gems/${gem_name}"]
+	image:https://img.shields.io/gitlab/pipeline/${organization}/${gem_name}.svg[
+		GitLab pipeline, link="https://gitlab.com/${organization}/${gem_name}/pipelines"]
 	endif::[]
 	EOF
 
@@ -172,7 +189,7 @@ EOS
 
 preprocess_gemspec_repo() {
 	# Gemspec allow pushing
-	preprocess_info "gemspec"
+	preprocess_info "gemspec repos"
 	local gemspec="${gem_name}.gemspec"
 	\sed -i "" -Ee '17,29d' "${gemspec}"
 	ok || exit 1
@@ -182,7 +199,7 @@ preprocess_gemspec_repo() {
 
 preprocess_gemspec_bundler_version() {
 	# Gemspec bundler version
-	preprocess_info "gemspec"
+	preprocess_info "gemspec bundler version"
 	local gemspec="${gem_name}.gemspec"
 	local gem_bundler_version
 	gem_bundler_version="$(bundler --version | awk '{print $3}')"
@@ -236,6 +253,36 @@ bundle binstubs rake
 bundle binstubs rspec-core
 \`\`\`
 " >/dev/null 2>&1
+}
+
+install_gitlab_ci() {
+	install_info "GitLab CI configuration"
+	local config_file=.gitlab-ci.yml
+	cat > "${config_file}" <<EOF
+---
+
+image:
+  name: ruby:2.6.0
+
+stages:
+  - test
+
+before_script:
+  - gem install bundler
+  - bundle install
+
+cache:
+  paths:
+  - /cache
+
+test:
+  stage: test
+  script: |
+    bundle exec rspec
+EOF
+	ok || exit 1
+	\git add "${config_file}"
+	\git commit -m "ci: Install GitLab CI config" >/dev/null 2>&1
 }
 
 run_rubocop() {
@@ -314,6 +361,7 @@ main() {
 	preprocess_gemspec_repo
 	preprocess_gemspec_bundler_version "${gem_name}"
 
+	install_gitlab_ci
 	install_rubocop
 	install_hound
 	install_editorconfig

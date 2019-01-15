@@ -41,11 +41,12 @@ Converting markdown files to asciidoc... OK
 Preprocessing LICENSE.txt... OK
 Preprocessing README.adoc... OK
 Preprocessing CODE_OF_CONDUCT.adoc... OK
-Preprocessing gemspec... OK
+Preprocessing gemspec contacts... OK
 Preprocessing README.adoc... OK
 Preprocessing .travis.yml... OK
-Preprocessing gemspec... OK
-Preprocessing gemspec... OK
+Preprocessing gemspec repos... OK
+Preprocessing gemspec bundler version... OK
+Installing GitLab CI configuration... OK
 Installing Rubocop... OK
 Installing Hound... OK
 Installing Editorconfig... OK
