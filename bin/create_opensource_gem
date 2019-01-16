@@ -3,9 +3,11 @@
 # Ribose Open source Ruby gem creation
 # If it fails midway, fix this script, remove the generated files, and start
 # over.
+
+readonly progname="${0##*/}"
+
 show_usage() {
-	local script_name="${0%%*/}"
-	printf "Usage: \e[1m%s\e[m \$gem_name\n" "${script_name}"
+	printf "Usage: \e[1m%s\e[m \$gem_name\n" "${progname}"
 	cat <<EOF
 
 	The following environment variables are also consumed if specified:
