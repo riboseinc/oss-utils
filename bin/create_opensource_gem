@@ -169,7 +169,7 @@ preprocess_travis_config() {
 	raw_yml   = File.read(file_name)
 	require "yaml"
 	config            = YAML.load(raw_yml)
-	config["dist"]   ||= "trusty"
+	config["dist"]   ||= "xenial"
 	config["script"] ||= []
 	config["script"] << "bundle exec rspec"
 	config["rvm"] ||= []
