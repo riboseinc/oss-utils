@@ -428,7 +428,7 @@ See: https://github.com/riboseinc/oss-guides" >/dev/null 2>&1
 
 	install_simplecov
 	\git add .
-	\git commit -m "Add support for simplecov" >/dev/null 2>&1
+	\git commit -m "Report test coverage with SimpleCov and CodeCov" >/dev/null 2>&1
 
 	install_binstubs
 	run_rubocop
