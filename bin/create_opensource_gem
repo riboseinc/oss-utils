@@ -224,6 +224,35 @@ EOF
 	ok || exit 1
 }
 
+install_simplecov() {
+	install_info "Simplecov"
+	local spec_helper="spec/spec_helper.rb"
+	ruby <<EOS
+	file_name = "${spec_helper}"
+	raw_lines = File.read(file_name).split("\n")
+	new_content = <<~EOF
+	require "simplecov"
+	SimpleCov.start
+
+	if ENV.key?("CI")
+	  require "codecov"
+	  SimpleCov.formatter = SimpleCov::Formatter::Codecov
+	end
+	EOF
+
+	# Insert content at the beginning of file, before bundler setup
+	raw_lines.insert(0, new_content)
+	File.open(file_name, ?w) { |f| f.puts raw_lines.join("\n") }
+EOS
+	[[ $? = 0 ]] || exit 1
+	cat >> Gemfile <<EOF
+
+gem "codecov", require: false, group: :test
+gem "simplecov", require: false, group: :test
+EOF
+	ok || exit 1
+}
+
 install_hound() {
 	# Hound
 	install_info "Hound"
@@ -240,6 +269,10 @@ install_editorconfig() {
 
 install_binstubs() {
 	# Install binstubs, etc
+	echo_info "Running 'bundle' to prepare for binstub installation"
+	bundle >/dev/null
+	ok || exit 1
+
 	install_info "binstubs for rake"
 	bundle binstubs rake >/dev/null
 	ok || exit 1
@@ -371,6 +404,10 @@ main() {
 	\git commit -m "Add support for Rubocop, Hound and Editorconfig
 
 See: https://github.com/riboseinc/oss-guides" >/dev/null 2>&1
+
+	install_simplecov
+	\git add .
+	\git commit -m "Add support for simplecov" >/dev/null 2>&1
 
 	install_binstubs
 	run_rubocop

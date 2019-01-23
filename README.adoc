@@ -34,7 +34,7 @@ TODO: Move these instructions into their respective README files.
 [source,console]
 ----
 > create_opensource_gem "${your_gem_name}"
-Installing bundler... 1.16.5
+Installing bundler... 2.0.1
 Creating gem... OK
 Installing .gitignore... OK
 Converting markdown files to asciidoc... OK
@@ -50,6 +50,8 @@ Installing GitLab CI configuration... OK
 Installing Rubocop... OK
 Installing Hound... OK
 Installing Editorconfig... OK
+Installing Simplecov... OK
+Running 'bundle' to prepare for binstub installation... OK
 Installing binstubs for rake... OK
 Installing binstubs for rspec... OK
 Autofixing Ruby files... OK
@@ -57,7 +59,6 @@ Autofixing Ruby files... OK
 🥳  Gem created
 ✍️  Remember to update your gem's summary and description in ${your_gem_name}.gemspec
 ----
-
 === Contributing
 
 Bug reports and pull requests are welcome on GitHub at
