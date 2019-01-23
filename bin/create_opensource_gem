@@ -166,6 +166,12 @@ preprocess_travis_config() {
 	# Travis
 	local travis_file=.travis.yml
 	preprocess_info "${travis_file}"
+
+	# Prepare gemfiles for jvm-based rubies for Travis
+	\mkdir gemfiles && \
+	\cp Gemfile gemfiles/jruby.gemfile && \
+	\cp Gemfile gemfiles/truffleruby.gemfile && \
+
 	ruby <<EOS
 	file_name = "${travis_file}"
 	raw_yml   = File.read(file_name)
@@ -179,13 +185,28 @@ preprocess_travis_config() {
 	  match = version.match(/^(\d+\.\d+).*$/)
 	  match[1] ? match[1] : version
 	end
-	config["rvm"] << "2.3" << "2.4" << "2.5" << "2.6" << "ruby-head" << "jruby" << "jruby-head"
+	config["rvm"] << "2.3" << "2.4" << "2.5" << "2.6"
 	config["rvm"].sort!.uniq!
+	config["matrix"]                   ||= {}
+	config["matrix"]["include"]        ||= []
+	config["matrix"]["allow_failures"] ||= []
+	jruby_config = {
+	  "gemfile" => "gemfiles/jruby.gemfile",
+	  "rvm"     => "jruby",
+	}
+	truffleruby_config = {
+	  "gemfile" => "gemfiles/truffleruby.gemfile",
+	  "rvm"     => "truffleruby",
+	}
+	# NOTE: This creates aliased nodes in the YAML file.
+	config["matrix"]["include"]        << jruby_config << truffleruby_config
+	config["matrix"]["allow_failures"] << jruby_config << truffleruby_config
 	new_yml = YAML.dump(config)
 	File.open(file_name, ?w) { |f| f.puts new_yml }
 EOS
 	ok || exit 1
 	\git add -u
+	\git add gemfiles
 	\git commit -m "ci: Add script, rvm and dist to .travis.yml" >/dev/null 2>&1
 }
 
